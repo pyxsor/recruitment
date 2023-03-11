@@ -11,8 +11,8 @@ class ExampleTest extends TestCase
      *
      * @return void
      */
-    public function test_example()
+    public function testBasicTest()
     {
-        static::assertTrue(true);
+        $this->assertTrue(true);
     }
 }

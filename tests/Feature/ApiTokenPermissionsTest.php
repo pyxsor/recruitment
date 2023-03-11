@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Features;
+use Laravel\Jetstream\Http\Livewire\ApiTokenManager;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ApiTokenPermissionsTest extends TestCase
@@ -15,14 +17,10 @@ class ApiTokenPermissionsTest extends TestCase
     public function test_api_token_permissions_can_be_updated()
     {
         if (! Features::hasApiFeatures()) {
-            return static::markTestSkipped('API support is not enabled.');
+            return $this->markTestSkipped('API support is not enabled.');
         }
 
-        if (Features::hasTeamFeatures()) {
-            $this->actingAs($user = User::factory()->withPersonalTeam()->create());
-        } else {
-            $this->actingAs($user = User::factory()->create());
-        }
+        $this->actingAs($user = User::factory()->withPersonalTeam()->create());
 
         $token = $user->tokens()->create([
             'name' => 'Test Token',
@@ -30,16 +28,18 @@ class ApiTokenPermissionsTest extends TestCase
             'abilities' => ['create', 'read'],
         ]);
 
-        $response = $this->put('/user/api-tokens/'.$token->id, [
-            'name' => $token->name,
-            'permissions' => [
-                'delete',
-                'missing-permission',
-            ],
-        ]);
+        Livewire::test(ApiTokenManager::class)
+                    ->set(['managingPermissionsFor' => $token])
+                    ->set(['updateApiTokenForm' => [
+                        'permissions' => [
+                            'delete',
+                            'missing-permission',
+                        ],
+                    ]])
+                    ->call('updateApiToken');
 
-        static::assertTrue($user->fresh()->tokens->first()->can('delete'));
-        static::assertFalse($user->fresh()->tokens->first()->can('read'));
-        static::assertFalse($user->fresh()->tokens->first()->can('missing-permission'));
+        $this->assertTrue($user->fresh()->tokens->first()->can('delete'));
+        $this->assertFalse($user->fresh()->tokens->first()->can('read'));
+        $this->assertFalse($user->fresh()->tokens->first()->can('missing-permission'));
     }
 }
